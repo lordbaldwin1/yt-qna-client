@@ -2,25 +2,40 @@
 
 import { useEffect, useState } from "react";
 
-export function WebSocketClient() {
+export function WebSocketClient(props: { videoId: string }) {
+  // why is this a state?
   const [socket, setSocket] = useState<WebSocket | null>(null);
-  const [messages, setMessages] = useState<any[]>([]);
-  const [connectionStatus, setConnectionStatus] = useState<"connected" | "disconnected" | "connecting">("connecting");
+  const [messages, setMessages] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [inputQuestion, setInputQuestion] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
 
+  // HOW THE FUCK DO I FORMAT A CHAT?
+  // HOW THE FUCK DO I FORMAT THE CHUNKS?
   useEffect(() => {
     const ws = new WebSocket("ws://localhost:3001");
 
     ws.onopen = () => {
+      // Probably setup the welcome message?
+      // 
       console.log("connected to server");
-      setConnectionStatus("connected");
     };
 
+    // types: error, processing, chunk, complete
     ws.onmessage = (event) => {
       try {
-        const message = JSON.parse(event.data);
-        console.log("Received message:", message);
-        setMessages((prevMessages) => [...prevMessages, message]);
+        const response = JSON.parse(event.data);
+        if (response.type === "error") {
+          setError(response.message);
+        } else if (response.type === "processing") {
+          setLoading(true);
+        } else if (response.type === "chunk") {
+          setMessages((prevMessages) => [...prevMessages, response.message]);
+        } else if (response.type === "complete") {
+          setLoading(false);
+        } else if (response.type === "connection") {
+          setMessages((prevMessages) => [...prevMessages, response.message]);
+        }
       } catch (err) {
         console.error("Error parsing message:", err);
         setError("Failed to parse message from server");
@@ -30,12 +45,10 @@ export function WebSocketClient() {
     ws.onerror = (event) => {
       console.error("WebSocket error:", event);
       setError("WebSocket connection error");
-      setConnectionStatus("disconnected");
     };
 
     ws.onclose = () => {
-      console.log("disconnected from server");
-      setConnectionStatus("disconnected");
+      console.log("Disconnected from server");
     };
 
     setSocket(ws);
@@ -44,15 +57,23 @@ export function WebSocketClient() {
       ws.close();
     };
   }, []);
+
+  const sendMessage = () => {
+    if (socket && socket.readyState === WebSocket.OPEN && inputQuestion) {
+      console.log("sending message", inputQuestion);
+      socket.send(JSON.stringify({ question: inputQuestion, videoId: props.videoId }));
+      setInputQuestion("");
+    }
+  }
   
   return (
     <div className="p-4 border rounded-md my-4">
       <h2 className="text-xl font-bold mb-2">WebSocket Client</h2>
       <div className="mb-2">
         Status: {
-          connectionStatus === "connected" ? 
+          socket?.readyState === WebSocket.OPEN ? 
             <span className="text-green-600">Connected</span> : 
-            connectionStatus === "connecting" ? 
+            socket?.readyState === WebSocket.CONNECTING ? 
               <span className="text-yellow-600">Connecting...</span> : 
               <span className="text-red-600">Disconnected</span>
         }
@@ -69,12 +90,21 @@ export function WebSocketClient() {
             {messages.map((msg, index) => (
               <li key={index} className="p-2 rounded">
                 <pre className="whitespace-pre-wrap text-sm">
-                  {JSON.stringify(msg, null, 2)}
+                  {msg}
                 </pre>
               </li>
             ))}
           </ul>
         )}
+      </div>
+      <div className="flex items-center space-x-2">
+        <input
+          type="text"
+          placeholder="Type your question here..."
+          value={inputQuestion}
+          onChange={(e) => setInputQuestion(e.target.value)}
+        />
+        <button onClick={sendMessage}>Send</button>
       </div>
     </div>
   );

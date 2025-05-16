@@ -32,7 +32,7 @@ export default async function VideoPage({ params }: { params: Promise<{ videoId:
         </div>
         
         <div className="lg:col-span-1">
-          <WebSocketClient />
+          <WebSocketClient videoId={videoId} />
         </div>
       </div>
     </div>
