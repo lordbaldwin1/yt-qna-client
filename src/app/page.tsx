@@ -20,7 +20,7 @@ export default function HomePage() {
     const data = await response.json() as ApiResponse<Video>;
 
     if (!response.ok) {
-      setError(data.error || "An error occurred");
+      setError(data.message || "An error occurred");
       return;
     }
 

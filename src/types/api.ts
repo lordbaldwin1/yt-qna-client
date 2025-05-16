@@ -1,9 +1,6 @@
 export interface ApiResponse<T> {
-  success: boolean;
-  message?: string;
+  message: string;
   data?: T;
-  error?: string;
-  code?: string;
 }
 
 export interface Video {
